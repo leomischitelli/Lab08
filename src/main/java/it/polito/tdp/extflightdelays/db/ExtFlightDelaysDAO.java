@@ -5,11 +5,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import it.polito.tdp.extflightdelays.model.Airline;
 import it.polito.tdp.extflightdelays.model.Airport;
+import it.polito.tdp.extflightdelays.model.CoppiaAeroporti;
 import it.polito.tdp.extflightdelays.model.Flight;
 
 public class ExtFlightDelaysDAO {
@@ -91,4 +94,42 @@ public class ExtFlightDelaysDAO {
 			throw new RuntimeException("Error Connection Database");
 		}
 	}
+
+	public Collection<CoppiaAeroporti> loadAllFlightsDistance(int distanzaMin,
+			Map<Integer, Airport> idAeroporti) {
+
+		String sql = "SELECT ORIGIN_AIRPORT_ID, DESTINATION_AIRPORT_ID, AVG(distance) as av "
+				+ "FROM flights "
+				+ "GROUP BY ORIGIN_AIRPORT_ID, DESTINATION_AIRPORT_ID "
+				+ "HAVING AVG(distance) > ? "
+				+ "ORDER BY ORIGIN_AIRPORT_ID";
+		
+		List<CoppiaAeroporti> result = new ArrayList<CoppiaAeroporti>();
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, distanzaMin);
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				Airport partenza = idAeroporti.get(rs.getInt("ORIGIN_AIRPORT_ID"));
+				Airport arrivo = idAeroporti.get(rs.getInt("DESTINATION_AIRPORT_ID"));
+				if(arrivo!=null && partenza!=null) {
+					CoppiaAeroporti coppia = new CoppiaAeroporti(partenza, arrivo, rs.getDouble("av"));
+					result.add(coppia);
+				}
+			}
+			conn.close();
+			return result;
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+		
+								
+	}
 }
+
+
